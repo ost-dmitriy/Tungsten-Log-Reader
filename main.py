@@ -9,7 +9,7 @@ import sys
 def parse_log_file(filepath):
     durations = defaultdict(list)
     errors = defaultdict(int)
-    with open(filepath, 'r', newline='', encoding='utf-8') as f:
+    with open(filepath, 'r', newline='', encoding='utf-16') as f:
         reader = csv.reader(f)
         for row in reader:
             if row and row[0].strip('"') == '05':
