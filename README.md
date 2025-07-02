@@ -52,19 +52,19 @@ This tool helps operations and IT teams **quickly assess performance metrics** w
 4. Build the executable:
 
    ```powershell
-   python -m PyInstaller --onefile --windowed --name "LogTimeAverager" --icon "app.ico" main.py
+   python -m PyInstaller --onefile --windowed --name "Tungsten Log Reader" --icon "app.ico" main.py
    ```
 
 5. Find the final executable in the `dist` directory:
    ```
-   dist\LogTimeAverager.exe
+   dist\Tungsten Log Reader.exe
    ```
 
 ---
 
 ## 🚀 Usage
 
-1. Double-click `LogTimeAverager.exe`.
+1. Double-click `Tungsten Log Reader.exe`.
 2. In the dialog, select one or more log files (`*.log`, `*.txt`).
 3. Click **Open** – the application will parse and display average times in a popup window.
 
@@ -81,7 +81,7 @@ To prevent this:
 
    ```powershell
    # Replace with your full path to the EXE
-   $exe = "C:\path\to\dist\LogTimeAverager.exe"
+   $exe = "C:\path\to\dist\Tungsten Log Reader.exe"
    Add-MpPreference -ExclusionProcess $exe
    ```
 
