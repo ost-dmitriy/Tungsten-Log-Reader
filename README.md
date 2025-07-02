@@ -25,7 +25,7 @@ This tool helps operations and IT teams **quickly assess performance metrics** w
 - **Automated parsing** – Detects relevant processing steps automatically.
 - **Minute-level averages** – Clear display of rounded processing times.
 - **Standalone EXE** – Built using PyInstaller for one-click deployment.
-- **Custom icon support** – Uses branded icons for both the executable and the app window.
+
 
 ---
 
