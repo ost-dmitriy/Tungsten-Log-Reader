@@ -8,6 +8,7 @@ import sys
 
 def parse_log_file(filepath):
     durations = defaultdict(list)
+    errors = defaultdict(int)
     with open(filepath, 'r', newline='', encoding='utf-8') as f:
         reader = csv.reader(f)
         for row in reader:
@@ -17,70 +18,75 @@ def parse_log_file(filepath):
                     end_str = row[3].strip('"') + ' ' + row[4].strip('"')
                     start_dt = datetime.datetime.strptime(start_str, '%Y-%m-%d %H:%M:%S')
                     end_dt = datetime.datetime.strptime(end_str, '%Y-%m-%d %H:%M:%S')
-                    step_name = row[5].strip('"')
-                    durations[step_name].append((end_dt - start_dt).total_seconds())
-                except Exception:
+                    step = row[5].strip('"')
+                    durations[step].append((end_dt - start_dt).total_seconds())
+                except:
                     continue
-    return durations
+                combined = ' '.join(cell.strip('"') for cell in row)
+                if 'error' in combined.lower():
+                    errors[step] += 1
+    return durations, errors
 
-def average_durations(all_durations):
+def compute_averages(durations):
     averages = {}
-    for step, times in all_durations.items():
+    for step, times in durations.items():
         if times:
-            avg_seconds = sum(times) / len(times)
-            averages[step] = avg_seconds
+            averages[step] = sum(times) / len(times)
     return averages
 
-def format_duration(seconds):
-    minutes = int(seconds // 60)
-    secs = int(seconds % 60)
-    if minutes > 0:
-        if secs > 0:
-            return f"{minutes} min {secs} sec"
-        else:
-            return f"{minutes} min"
-    else:
-        return f"{secs} sec"
+def format_duration(sec):
+    minutes = int(sec // 60)
+    seconds = int(sec % 60)
+    if minutes:
+        return f"{minutes} min {seconds} sec" if seconds else f"{minutes} min"
+    return f"{seconds} sec"
 
 def main():
     root = tk.Tk()
     root.withdraw()
-    root.title("Tungsten Log Reader")
+    root.title("Log Time Averager")
     try:
-        base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
-        icon_path = os.path.join(base_path, 'app.ico')
-        root.iconbitmap(icon_path)
-    except Exception:
+        base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+        root.iconbitmap(os.path.join(base, 'app.ico'))
+    except:
         pass
 
-    filepaths = filedialog.askopenfilenames(
+    paths = filedialog.askopenfilenames(
         title="Select log file(s)",
         filetypes=[("Log files", "*.log *.txt"), ("All files", "*")]
     )
-    if not filepaths:
-        messagebox.showwarning("No Selection", "No files selected. Exiting.")
+    if not paths:
+        messagebox.showwarning("No Selection", "No files selected.")
         return
 
-    aggregate = defaultdict(list)
-    for path in filepaths:
-        durations = parse_log_file(path)
-        for step, times in durations.items():
-            aggregate[step].extend(times)
+    all_durations = defaultdict(list)
+    all_errors = defaultdict(int)
 
-    averages = average_durations(aggregate)
-    if not averages:
-        messagebox.showinfo("No Data", "No valid entries found in the selected files.")
+    for p in paths:
+        durations, errors = parse_log_file(p)
+        for step, vals in durations.items():
+            all_durations[step].extend(vals)
+        for step, count in errors.items():
+            all_errors[step] += count
+
+    averages = compute_averages(all_durations)
+    if not averages and not all_errors:
+        messagebox.showinfo("No Data", "No valid data or errors found.")
         return
 
-    output_lines = ["Average processing times:"]
-    for step, avg_sec in averages.items():
-        formatted = format_duration(avg_sec)
-        output_lines.append(f"- {step}: {formatted}")
-    output_lines.append("")
-    output_lines.append("Developed by Dmytro Nozhenko")
-    output_message = "\n".join(output_lines)
+    lines = ["Average processing times:"]
+    for step, avg in averages.items():
+        text = f"- {step}: {format_duration(avg)}"
+        if all_errors.get(step):
+            text += f" ({all_errors[step]} errors)"
+        lines.append(text)
 
-    messagebox.showinfo("Processing Results", output_message)
+    total = sum(all_errors.values())
+    if total:
+        lines.append(f"\nTotal errors in file: {total}")
+
+    lines.append(f"\nDeveloped by Dmytro Nozhenko")
+    messagebox.showinfo("Results", "\n".join(lines))
 
 if __name__ == '__main__':
     main()
