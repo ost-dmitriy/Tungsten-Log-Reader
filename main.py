@@ -12,33 +12,44 @@ def parse_log_file(filepath):
     errors = defaultdict(int)
     batch_classes = []
 
-    with open(filepath, 'r', newline='', encoding='utf-16') as f:
-        reader = csv.reader(f)
-        for row in reader:
-            if not row:
-                continue
+    encodings_to_try = ['utf-8', 'utf-8-sig', 'utf-16', 'cp1252']
 
-            record_type = row[0].strip('"')
-            if record_type == '04' and len(row) > 1:
-                batch_name = row[1].strip('"')
-                if batch_name:
-                    batch_classes.append(batch_name)
+    for enc in encodings_to_try:
+        try:
+            with open(filepath, 'r', newline='', encoding=enc) as f:
+                reader = csv.reader(f)
+                for row in reader:
+                    if not row:
+                        continue
 
-            elif record_type == '05':
-                try:
-                    start_str = row[1].strip('"') + ' ' + row[2].strip('"')
-                    end_str = row[3].strip('"') + ' ' + row[4].strip('"')
-                    start_dt = datetime.datetime.strptime(start_str, '%Y-%m-%d %H:%M:%S')
-                    end_dt = datetime.datetime.strptime(end_str, '%Y-%m-%d %H:%M:%S')
-                    step = row[5].strip('"')
-                    durations[step].append((end_dt - start_dt).total_seconds())
-                except:
-                    continue
-                combined = ' '.join(cell.strip('"') for cell in row)
-                if 'error' in combined.lower():
-                    errors[step] += 1
+                    record_type = row[0].strip('"')
+                    if record_type == '04' and len(row) > 1:
+                        batch_name = row[1].strip('"')
+                        if batch_name:
+                            batch_classes.append(batch_name)
+
+                    elif record_type == '05':
+                        try:
+                            start_str = row[1].strip('"') + ' ' + row[2].strip('"')
+                            end_str = row[3].strip('"') + ' ' + row[4].strip('"')
+                            start_dt = datetime.datetime.strptime(start_str, '%Y-%m-%d %H:%M:%S')
+                            end_dt = datetime.datetime.strptime(end_str, '%Y-%m-%d %H:%M:%S')
+                            step = row[5].strip('"')
+                            durations[step].append((end_dt - start_dt).total_seconds())
+                        except:
+                            continue
+                        combined = ' '.join(cell.strip('"') for cell in row)
+                        if 'error' in combined.lower():
+                            errors[step] += 1
+            break  
+        except UnicodeDecodeError:
+            continue
+    else:
+        messagebox.showerror("Encoding Error", f"Unable to read file {os.path.basename(filepath)} with supported encodings.")
+        return durations, errors, batch_classes
 
     return durations, errors, batch_classes
+
 
 
 def compute_averages(durations):
