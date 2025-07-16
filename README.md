@@ -13,8 +13,8 @@
   - PDF Generator
   - Export
 - Calculates the **average processing time** for each step (rounded to minutes).
+- Analyses which batch classes are used **most frequently**.
 - Presents results in a **simple popup window**.
-
 This tool helps operations and IT teams **quickly assess performance metrics** without manual log analysis.
 
 ---
@@ -24,6 +24,7 @@ This tool helps operations and IT teams **quickly assess performance metrics** w
 - **Single-click file selection** – Select one or multiple `.log` or `.txt` files.
 - **Automated parsing** – Detects relevant processing steps automatically.
 - **Minute-level averages** – Clear display of rounded processing times.
+- **Batch class statistic** - Statistics on the use of package classes based on the selected log file.
 - **Standalone EXE** – Built using PyInstaller for one-click deployment.
 
 
