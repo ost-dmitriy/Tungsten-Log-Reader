@@ -5,7 +5,8 @@ from tkinter import filedialog, messagebox, ttk
 from collections import defaultdict, Counter
 import os
 import sys
-
+import atexit
+import tempfile
 
 def parse_log_file(filepath):
     durations = defaultdict(list)
@@ -74,7 +75,7 @@ def show_batch_class_window(parent, counter):
     win.title("Batch Class Details")
     win.geometry('400x300')
 
-    # Create Treeview for tabular display
+    
     cols = ('Class', 'Count', 'Percentage')
     tree = ttk.Treeview(win, columns=cols, show='headings')
     for col in cols:
@@ -121,6 +122,16 @@ def show_results_window(root, averages, errors, batch_counter):
 
 
 def main():
+
+    lockfile = os.path.join(tempfile.gettempdir(), 'log_parser.lock')
+
+    if os.path.exists(lockfile):
+        messagebox.showwarning("Already Running", "Another instance of the application is already running.")
+        return
+    else:
+        open(lockfile, 'w').close()
+    atexit.register(lambda: os.remove(lockfile) if os.path.exists(lockfile) else None)
+
     root = tk.Tk()
     root.withdraw()
     root.title("Log Time Averager")
