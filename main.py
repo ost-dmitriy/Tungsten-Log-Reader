@@ -7,6 +7,7 @@ import os
 import sys
 import atexit
 import tempfile
+import psutil
 
 def parse_log_file(filepath):
     durations = defaultdict(list)
@@ -42,7 +43,7 @@ def parse_log_file(filepath):
                         combined = ' '.join(cell.strip('"') for cell in row)
                         if 'error' in combined.lower():
                             errors[step] += 1
-            break  
+            break
         except UnicodeDecodeError:
             continue
     else:
@@ -51,15 +52,12 @@ def parse_log_file(filepath):
 
     return durations, errors, batch_classes
 
-
-
 def compute_averages(durations):
     averages = {}
     for step, times in durations.items():
         if times:
             averages[step] = sum(times) / len(times)
     return averages
-
 
 def format_duration(sec):
     minutes = int(sec // 60)
@@ -68,14 +66,12 @@ def format_duration(sec):
         return f"{minutes} min {seconds} sec" if seconds else f"{minutes} min"
     return f"{seconds} sec"
 
-
 def show_batch_class_window(parent, counter):
     total = sum(counter.values())
     win = tk.Toplevel(parent)
     win.title("Batch Class Details")
     win.geometry('400x300')
 
-    
     cols = ('Class', 'Count', 'Percentage')
     tree = ttk.Treeview(win, columns=cols, show='headings')
     for col in cols:
@@ -83,19 +79,19 @@ def show_batch_class_window(parent, counter):
         tree.column(col, anchor='center')
     tree.pack(fill='both', expand=True, padx=10, pady=10)
 
-    # Populate rows
     for cls, cnt in counter.most_common():
         pct = cnt / total * 100
         tree.insert('', 'end', values=(cls, cnt, f"{pct:.1f}%"))
 
-    # Add Back button
     btn_back = ttk.Button(win, text="Back", command=win.destroy)
     btn_back.pack(pady=(0, 10))
 
-
-def show_results_window(root, averages, errors, batch_counter):
+def show_results_window(root, averages, errors, batch_counter, on_close):
     win = tk.Toplevel(root)
     win.title("Results")
+
+
+    win.protocol("WM_DELETE_WINDOW", on_close)
 
     text = tk.Text(win, width=50, height=15)
     text.pack(padx=10, pady=10)
@@ -113,28 +109,47 @@ def show_results_window(root, averages, errors, batch_counter):
     btn_frame = ttk.Frame(win)
     btn_frame.pack(pady=10)
 
-    btn_ok = ttk.Button(btn_frame, text="OK", command=win.destroy)
+    btn_ok = ttk.Button(btn_frame, text="OK", command=on_close)
     btn_ok.pack(side='left', padx=5)
 
-    btn_batch = ttk.Button(btn_frame, text="Batch Class Statistic", 
+    btn_batch = ttk.Button(btn_frame, text="Batch Class Statistic",
                            command=lambda: show_batch_class_window(root, batch_counter))
     btn_batch.pack(side='left', padx=5)
 
-
 def main():
-
     lockfile = os.path.join(tempfile.gettempdir(), 'log_parser.lock')
 
     if os.path.exists(lockfile):
-        messagebox.showwarning("Already Running", "Another instance of the application is already running.")
-        return
-    else:
-        open(lockfile, 'w').close()
-    atexit.register(lambda: os.remove(lockfile) if os.path.exists(lockfile) else None)
+        try:
+            with open(lockfile, 'r') as f:
+                pid = int(f.read().strip())
+            if psutil.pid_exists(pid):
+                messagebox.showwarning("Already Running", "Another instance of the application is already running.")
+                return
+            else:
+                os.remove(lockfile)
+        except:
+            os.remove(lockfile)
+
+    with open(lockfile, 'w') as f:
+        f.write(str(os.getpid()))
+
+    def remove_lock():
+        if os.path.exists(lockfile):
+            os.remove(lockfile)
+    atexit.register(remove_lock)
 
     root = tk.Tk()
     root.withdraw()
     root.title("Log Time Averager")
+
+    def on_close():
+        remove_lock()
+        root.destroy()
+        sys.exit()
+
+    root.protocol("WM_DELETE_WINDOW", on_close)
+
     try:
         base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
         root.iconbitmap(os.path.join(base, 'app.ico'))
@@ -147,6 +162,7 @@ def main():
     )
     if not paths:
         messagebox.showwarning("No Selection", "No files selected.")
+        on_close()
         return
 
     all_durations = defaultdict(list)
@@ -166,9 +182,11 @@ def main():
 
     if not averages and not all_errors and not batch_counter:
         messagebox.showinfo("No Data", "No valid data or errors found.")
+        on_close()
         return
 
-    show_results_window(root, averages, all_errors, batch_counter)
+    show_results_window(root, averages, all_errors, batch_counter, on_close)
+
     root.mainloop()
 
 if __name__ == '__main__':
