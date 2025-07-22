@@ -117,4 +117,4 @@ Set-MpPreference -AttackSurfaceReductionRules_Ids D4F940AB-401B-4EFC-AADC-AD5F3C
 
 ## 📜 License
 
-This project is released under the **MIT License**. See [LICENSE](LICENSE) for details.
+This project is released under the **MIT License**. See [LICENSE](License) for details.
