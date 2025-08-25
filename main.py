@@ -16,6 +16,10 @@ def parse_log_file(filepath):
 
     encodings_to_try = ['utf-8', 'utf-8-sig', 'utf-16', 'cp1252']
 
+    min_dt = None
+    max_dt = None
+
+    file_read = False
     for enc in encodings_to_try:
         try:
             with open(filepath, 'r', newline='', encoding=enc) as f:
@@ -36,21 +40,38 @@ def parse_log_file(filepath):
                             end_str = row[3].strip('"') + ' ' + row[4].strip('"')
                             start_dt = datetime.datetime.strptime(start_str, '%Y-%m-%d %H:%M:%S')
                             end_dt = datetime.datetime.strptime(end_str, '%Y-%m-%d %H:%M:%S')
+                            if min_dt is None or start_dt < min_dt:
+                                min_dt = start_dt
+                            if max_dt is None or end_dt > max_dt:
+                                max_dt = end_dt
                             step = row[5].strip('"')
                             durations[step].append((end_dt - start_dt).total_seconds())
-                        except:
+                        except Exception:
+
                             continue
                         combined = ' '.join(cell.strip('"') for cell in row)
                         if 'error' in combined.lower():
-                            errors[step] += 1
+                            try:
+                                errors[step] += 1
+                            except Exception:
+                                pass
+            file_read = True
             break
         except UnicodeDecodeError:
             continue
-    else:
-        messagebox.showerror("Encoding Error", f"Unable to read file {os.path.basename(filepath)} with supported encodings.")
-        return durations, errors, batch_classes
+        except Exception:
 
-    return durations, errors, batch_classes
+            continue
+
+    if not file_read:
+        messagebox.showerror("Encoding Error", f"Unable to read file {os.path.basename(filepath)} with supported encodings.")
+        return durations, errors, batch_classes, None, None
+
+    min_date = min_dt.date() if min_dt else None
+    max_date = max_dt.date() if max_dt else None
+
+    return durations, errors, batch_classes, min_date, max_date
+
 
 def compute_averages(durations):
     averages = {}
@@ -66,6 +87,9 @@ def format_duration(sec):
         return f"{minutes} min {seconds} sec" if seconds else f"{minutes} min"
     return f"{seconds} sec"
 
+def format_date(d):
+    return d.strftime("%d-%m-%Y") if d else "N/A"
+
 def show_batch_class_window(parent, counter):
     total = sum(counter.values())
     win = tk.Toplevel(parent)
@@ -80,21 +104,27 @@ def show_batch_class_window(parent, counter):
     tree.pack(fill='both', expand=True, padx=10, pady=10)
 
     for cls, cnt in counter.most_common():
-        pct = cnt / total * 100
+        pct = cnt / total * 100 if total else 0
         tree.insert('', 'end', values=(cls, cnt, f"{pct:.1f}%"))
 
     btn_back = ttk.Button(win, text="Back", command=win.destroy)
     btn_back.pack(pady=(0, 10))
 
-def show_results_window(root, averages, errors, batch_counter, on_close):
+def show_results_window(root, averages, errors, batch_counter, min_date, max_date, on_close):
     win = tk.Toplevel(root)
     win.title("Results")
 
-
     win.protocol("WM_DELETE_WINDOW", on_close)
 
-    text = tk.Text(win, width=50, height=15)
+    text = tk.Text(win, width=60, height=18)
     text.pack(padx=10, pady=10)
+
+
+    date_from = format_date(min_date)
+    date_till = format_date(max_date)
+    header = f"Batches analytics | Timestamp:{date_from} - {date_till}:\n\n"
+    text.insert('end', header)
+
     text.insert('end', "Average processing times:\n")
     for step, avg in averages.items():
         line = f"- {step}: {format_duration(avg)}"
@@ -169,13 +199,24 @@ def main():
     all_errors = defaultdict(int)
     all_batch_classes = []
 
+    global_min_date = None
+    global_max_date = None
+
     for p in paths:
-        durations, errors, batch_classes = parse_log_file(p)
+        durations, errors, batch_classes, min_date, max_date = parse_log_file(p)
         for step, vals in durations.items():
             all_durations[step].extend(vals)
         for step, count in errors.items():
             all_errors[step] += count
         all_batch_classes.extend(batch_classes)
+
+
+        if min_date:
+            if global_min_date is None or min_date < global_min_date:
+                global_min_date = min_date
+        if max_date:
+            if global_max_date is None or max_date > global_max_date:
+                global_max_date = max_date
 
     averages = compute_averages(all_durations)
     batch_counter = Counter(all_batch_classes)
@@ -185,7 +226,7 @@ def main():
         on_close()
         return
 
-    show_results_window(root, averages, all_errors, batch_counter, on_close)
+    show_results_window(root, averages, all_errors, batch_counter, global_min_date, global_max_date, on_close)
 
     root.mainloop()
 
