@@ -6,8 +6,63 @@ from collections import defaultdict, Counter
 import os
 import sys
 import atexit
-import tempfile
-import psutil
+import ctypes
+
+mutex_handle = None
+lock_fd = None
+lock_path = None
+
+def acquire_single_instance(app_id="LogTimeAverager_v1"):
+    global mutex_handle, lock_fd, lock_path
+    if os.name == 'nt':
+        kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+        mutex_name = f"Global\\{app_id}"
+        mutex_handle = kernel32.CreateMutexW(None, False, mutex_name)
+        err = ctypes.get_last_error()
+        ERROR_ALREADY_EXISTS = 183
+        if not mutex_handle:
+
+            return False, "Can't create mutex handle."
+        if err == ERROR_ALREADY_EXISTS:
+
+            kernel32.CloseHandle(mutex_handle)
+            mutex_handle = None
+            return False, "Another instance of the application is already running."
+
+        atexit.register(lambda: kernel32.CloseHandle(mutex_handle) if mutex_handle else None)
+        return True, None
+    else:
+
+        try:
+            base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+            lock_path = os.path.join(base, f".{app_id}.lock")
+
+            flags = os.O_CREAT | os.O_EXCL | os.O_RDWR
+            lock_fd = os.open(lock_path, flags)
+
+            os.write(lock_fd, str(os.getpid()).encode())
+            atexit.register(_release_posix_lock)
+            return True, None
+        except FileExistsError:
+            return False, "Another instance of the application is already running."
+        except Exception as e:
+            return False, f"Can't create lock file: {e}"
+
+def _release_posix_lock():
+    global lock_fd, lock_path
+    try:
+        if lock_fd:
+            os.close(lock_fd)
+            lock_fd = None
+        if lock_path and os.path.exists(lock_path):
+            try:
+                os.remove(lock_path)
+            except:
+                pass
+            lock_path = None
+    except:
+        pass
+
 
 def parse_log_file(filepath):
     durations = defaultdict(list)
@@ -47,7 +102,6 @@ def parse_log_file(filepath):
                             step = row[5].strip('"')
                             durations[step].append((end_dt - start_dt).total_seconds())
                         except Exception:
-
                             continue
                         combined = ' '.join(cell.strip('"') for cell in row)
                         if 'error' in combined.lower():
@@ -60,7 +114,6 @@ def parse_log_file(filepath):
         except UnicodeDecodeError:
             continue
         except Exception:
-
             continue
 
     if not file_read:
@@ -71,7 +124,6 @@ def parse_log_file(filepath):
     max_date = max_dt.date() if max_dt else None
 
     return durations, errors, batch_classes, min_date, max_date
-
 
 def compute_averages(durations):
     averages = {}
@@ -132,7 +184,6 @@ def show_results_window(root, averages, errors, batch_counter, min_date, max_dat
     text = tk.Text(win, width=60, height=18)
     text.pack(padx=10, pady=10)
 
-
     date_from = format_date(min_date)
     date_till = format_date(max_date)
     header = f"Batches analytics | Timestamp:{date_from} - {date_till}:\n\n"
@@ -160,34 +211,24 @@ def show_results_window(root, averages, errors, batch_counter, min_date, max_dat
     btn_batch.pack(side='left', padx=5)
 
 def main():
-    lockfile = os.path.join(tempfile.gettempdir(), 'log_parser.lock')
+    ok, msg = acquire_single_instance()
+    if not ok:
 
-    if os.path.exists(lockfile):
         try:
-            with open(lockfile, 'r') as f:
-                pid = int(f.read().strip())
-            if psutil.pid_exists(pid):
-                messagebox.showwarning("Already Running", "Another instance of the application is already running.")
-                return
-            else:
-                os.remove(lockfile)
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showwarning("Already Running", msg)
+            root.destroy()
         except:
-            os.remove(lockfile)
-
-    with open(lockfile, 'w') as f:
-        f.write(str(os.getpid()))
-
-    def remove_lock():
-        if os.path.exists(lockfile):
-            os.remove(lockfile)
-    atexit.register(remove_lock)
+            print(msg)
+        sys.exit(0)
 
     root = tk.Tk()
     root.withdraw()
     root.title("Log Time Averager")
 
     def on_close():
-        remove_lock()
+
         root.destroy()
         sys.exit()
 
@@ -222,7 +263,6 @@ def main():
         for step, count in errors.items():
             all_errors[step] += count
         all_batch_classes.extend(batch_classes)
-
 
         if min_date:
             if global_min_date is None or min_date < global_min_date:

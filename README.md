@@ -2,6 +2,13 @@
 
 **Developed by Dmytro Nozhenko**
 
+## 📄 Quick security snapshot
+
+**VirusTotal (permalink):**  
+https://www.virustotal.com/gui/file/7f2ab21ef82645ecddffe6018ae882c13ff8c6983708a0915a036a7cb4692b22/details
+
+**VirusTotal scan date:** 2025-08-28
+
 ## 📄 Description
 
 **Tungsten Log Reader** is a lightweight Windows desktop utility that:
@@ -117,4 +124,4 @@ Set-MpPreference -AttackSurfaceReductionRules_Ids D4F940AB-401B-4EFC-AADC-AD5F3C
 
 ## 📜 License
 
-This project is released under the **MIT License**. See [LICENSE](License) for details.
+This project is released under the **MIT License**. See [LICENSE](LICENSE) for details.
