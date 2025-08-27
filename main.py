@@ -95,6 +95,13 @@ def show_batch_class_window(parent, counter):
     win = tk.Toplevel(parent)
     win.title("Batch Class Details")
     win.geometry('400x300')
+    win.resizable(False, False)
+
+    try:
+        base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+        win.iconbitmap(os.path.join(base, 'app.ico'))
+    except:
+        pass
 
     cols = ('Class', 'Count', 'Percentage')
     tree = ttk.Treeview(win, columns=cols, show='headings')
@@ -113,7 +120,13 @@ def show_batch_class_window(parent, counter):
 def show_results_window(root, averages, errors, batch_counter, min_date, max_date, on_close):
     win = tk.Toplevel(root)
     win.title("Results")
+    win.resizable(False, False)
 
+    try:
+        base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+        win.iconbitmap(os.path.join(base, 'app.ico'))
+    except:
+        pass
     win.protocol("WM_DELETE_WINDOW", on_close)
 
     text = tk.Text(win, width=60, height=18)
