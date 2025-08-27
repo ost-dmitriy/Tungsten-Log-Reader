@@ -5,7 +5,7 @@
 ## 📄 Quick security snapshot
 
 **VirusTotal (permalink):**  
-https://www.virustotal.com/gui/file/7f2ab21ef82645ecddffe6018ae882c13ff8c6983708a0915a036a7cb4692b22/details
+https://www.virustotal.com/gui/file/6cd47b051df376a9d26f3335d8479d1fb2fc59954ada1dca2b165f7cfe1f25b9/details
 
 **VirusTotal scan date:** 2025-08-28
 
